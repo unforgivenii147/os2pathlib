@@ -1,8 +1,8 @@
 from __future__ import annotations
 import contextlib
-import os
 import re
 from dataclasses import dataclass
+from pathlib import Path
 from typing import TYPE_CHECKING
 from dh import TXT_EXT, is_binary
 
@@ -11,7 +11,7 @@ if TYPE_CHECKING:
 HEX_RE = re.compile(
     """
     (?<![0-9A-Fa-f])
-    \\
+    (?:
         [0-9A-Fa-f]{3}
         |[0-9A-Fa-f]{6}
         |[0-9A-Fa-f]{8}
@@ -97,7 +97,7 @@ def parse_rgba_match(m: re.Match) -> Color | None:
 def extract_colors_from_text(text: str) -> list[Color]:
     colors: list[Color] = []
     for hm in HEX_RE.finditer(text):
-        hex_body = hm.group(1)
+        hex_body = hm.group(0)
         with contextlib.suppress(Exception):
             colors.append(parse_hex_to_rgba(hex_body))
     for rm in RGBA_RE.finditer(text):
@@ -110,22 +110,21 @@ def extract_colors_from_text(text: str) -> list[Color]:
 TEXT_LIKE_EXTS = TXT_EXT
 
 
-def iter_text_files(root: str) -> Iterable[str]:
-    for dirpath, _, filenames in os.walk(root):
-        for fn in filenames:
-            path = os.path.join(dirpath, fn)
-            ext = os.path.splitext(fn)[1].lower()
-            if ext in TEXT_LIKE_EXTS or not is_binary(path):
-                yield path
+def iter_text_files(root: Path) -> Iterable[Path]:
+    for path in root.rglob("*"):
+        if not path.is_file():
+            continue
+        ext = path.suffix.lower()
+        if ext in TEXT_LIKE_EXTS or not is_binary(str(path)):
+            yield path
 
 
-def safe_read_text(path: str, limit_bytes: int = 5000000) -> str | None:
+def safe_read_text(path: Path, limit_bytes: int = 5000000) -> str | None:
     try:
-        size = os.path.getsize(path)
+        size = path.stat().st_size
         if size > limit_bytes:
             return None
-        with open(path, "rb") as f:
-            data = f.read()
+        data = path.read_bytes()
         for enc in ("utf-8", "utf-16", "latin-1"):
             try:
                 return data.decode(enc, errors="strict")
@@ -189,7 +188,7 @@ def demo_color_blocks(colors: list[Color], max_items: int = 200) -> None:
 
 
 def main() -> None:
-    root = "."
+    root = Path(".")
     all_found: list[Color] = []
     for path in iter_text_files(root):
         text = safe_read_text(path)

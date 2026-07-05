@@ -1,5 +1,4 @@
 import argparse
-import os
 import shutil
 import zipfile
 from pathlib import Path
@@ -75,7 +74,8 @@ def main() -> None:
     )
     parser.add_argument("-v", "--verbose", action="store_true", help="Show detailed output")
     args = parser.parse_args()
-    if not os.path.exists(args.directory):
+    directory_path = Path(args.directory)
+    if not directory_path.exists():
         print(f"Error: Directory '{args.directory}' does not exist")
         return
     move_empty_wheels(args.directory, args.dest)

@@ -1,4 +1,3 @@
-import os
 import sqlite3
 from pathlib import Path
 from sqlite3 import Cursor
@@ -45,12 +44,11 @@ def get_files_in_cwd():
     cwd = Path.cwd()
     files = []
     try:
-        for item in os.listdir(cwd):
-            item_path = os.path.join(cwd, item)
-            if Path(item_path).is_file():
-                print(f"  Reading: {item}")
-                contents = read_file_contents(item_path)
-                files.append({"filename": item, "contents": contents})
+        for item in cwd.iterdir():
+            if item.is_file():
+                print(f"  Reading: {item.name}")
+                contents = read_file_contents(str(item))
+                files.append({"filename": item.name, "contents": contents})
     except PermissionError:
         print("Warning: Permission denied accessing some files")
     return files

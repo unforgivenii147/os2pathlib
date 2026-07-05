@@ -1,6 +1,5 @@
 import datetime
 import json
-import os
 from pathlib import Path
 
 INFO_PATH = Path("~/isaac/.info.json").expanduser()
@@ -58,11 +57,9 @@ def process_file(path: str, header: str) -> None:
 def main() -> None:
     info = load_user_info()
     header = build_header(info)
-    for root, _, files in os.walk("."):
-        for fn in files:
-            path = os.path.join(root, fn)
-            if is_python_file(path):
-                process_file(path, header)
+    for path in Path(".").rglob("*"):
+        if path.is_file() and is_python_file(str(path)):
+            process_file(str(path), header)
 
 
 if __name__ == "__main__":

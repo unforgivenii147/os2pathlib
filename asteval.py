@@ -5,7 +5,6 @@ from pathlib import Path
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from typing import List, Optional
 from multiprocessing import Pool, cpu_count
-import os
 from dh import cprint, get_pyfiles, mpf3
 
 

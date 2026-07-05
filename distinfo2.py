@@ -1,4 +1,3 @@
-import os
 import shutil
 import sys
 from pathlib import Path
@@ -61,12 +60,11 @@ def process_lic(path: Path) -> None:
 
 
 def main() -> None:
-    missings = []
     cwd = Path.cwd()
     for path in cwd.glob("*"):
         if path.is_dir() and "dist-info" in path.name:
             process_lic(path)
-            if len(os.listdir(path)) < 2:
+            if len(list(path.iterdir())) < 2:
                 cprint(f"{path.name} empty pkg", "cyan")
 
 

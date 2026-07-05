@@ -4,10 +4,11 @@ import sys
 from pathlib import Path
 
 
-def expand_path(path) -> Path:
-    expanded_path = os.path.expanduser(path)
-    expanded_path = os.path.expandvars(expanded_path)
-    return Path(expanded_path).resolve()
+def expand_path(path_str: str) -> Path:
+    # Path.expanduser() handles ~
+    # os.path.expandvars() handles $VAR or %VAR%
+    expanded = os.path.expandvars(path_str)
+    return Path(expanded).expanduser().resolve()
 
 
 def compare_and_move_common(source_dir: str, target_dir: str) -> None:
@@ -52,7 +53,8 @@ def compare_and_move_common(source_dir: str, target_dir: str) -> None:
         if source_path.stat().st_size != target_path.stat().st_size:
             size_mismatches.append(filename)
         if dest_path.exists():
-            base, ext = os.path.splitext(filename)
+            base = dest_path.stem
+            ext = dest_path.suffix
             counter = 1
             while dest_path.exists():
                 new_name = f"{base}_common{counter}{ext}"
@@ -60,7 +62,7 @@ def compare_and_move_common(source_dir: str, target_dir: str) -> None:
                 counter += 1
             print(f"\n  Note: '{filename}' will be renamed to '{dest_path.name}' to avoid conflict")
         try:
-            shutil.move(str(source_path), str(dest_path))
+            shutil.move(source_path, dest_path)
             print(f"  ✓ Moved: {filename} -> {dest_path.name}")
             moved_count += 1
         except Exception as e:

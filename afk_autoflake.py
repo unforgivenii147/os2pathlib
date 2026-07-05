@@ -1,10 +1,10 @@
 import argparse
-import os
 import subprocess
+from pathlib import Path
 
 
 def check_or_fix_imports(file_path, autofix=False):
-    if not os.path.exists(file_path):
+    if not Path(file_path).exists():
         print(f"Error: The file `{file_path}` does not exist.")
         return
     command = ["autoflake", "--remove-all-unused-imports", "--ignore-init-module-imports", file_path]

@@ -12,14 +12,24 @@ def should_skip_dir(dirname):
 
 
 def walk_all(root_path="."):
-    for dirpath, dirnames, filenames in os.walk(root_path, topdown=True):
-        dirnames[:] = [d for d in dirnames if not should_skip_dir(d)]
-        yield ("dir", dirpath)
-        for filename in filenames:
-            filepath = os.path.join(dirpath, filename)
-            if os.path.islink(filepath):
-                continue
-            yield ("file", filepath)
+    root = Path(root_path)
+
+    def walk(p: Path):
+        if should_skip_dir(p.name):
+            return
+        yield ("dir", str(p))
+        try:
+            for item in p.iterdir():
+                if item.is_dir():
+                    yield from walk(item)
+                elif item.is_file():
+                    if item.is_symlink():
+                        continue
+                    yield ("file", str(item))
+        except PermissionError:
+            pass
+
+    yield from walk(root)
 
 
 def walk_dirs(root_path="."):
@@ -52,7 +62,7 @@ def is_executable(path):
 
 def get_current_mode(path):
     try:
-        return stat.S_IMODE(os.stat(path).st_mode)
+        return stat.S_IMODE(Path(path).stat().st_mode)
     except:
         return None
 
@@ -64,7 +74,7 @@ def determine_dir_target_mode(dirpath):
 def determine_file_target_mode(filepath):
     if is_executable(filepath):
         return None
-    parent_dir = os.path.basename(os.path.dirname(filepath))
+    parent_dir = Path(filepath).parent.name
     if has_shebang(filepath) or parent_dir == "bin":
         return 493
     return 420
@@ -90,7 +100,7 @@ def process_item(path, target_mode, dry_run=False):
     if dry_run:
         return True
     try:
-        os.chmod(path, target_mode)
+        Path(path).chmod(target_mode)
         return True
     except Exception as e:
         print(f"Error: {path}: {e}")

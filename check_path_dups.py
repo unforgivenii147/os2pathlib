@@ -5,11 +5,10 @@ from dh import cprint, get_sha256
 
 
 def get_path_dirs() -> list[Path]:
-    found = []
-    path_env = os.environ.get("PATH", "").split(":")
+    path_env = os.environ.get("PATH", "").split(os.pathsep)
     masonbin = "/data/data/com.termux/files/home/.local/share/nvim/mason/bin"
-    found = [Path(p).expanduser() for p in path_env if p != masonbin]
-    return found
+    found = [Path(p).expanduser() for p in path_env if p and p != masonbin]
+    return [p for p in found if p.exists()]
 
 
 def get_executables_in_dir(d: Path) -> list[Path]:
@@ -38,10 +37,9 @@ def main() -> None:
         return
     for name, items in sorted(duplicates.items()):
         cprint(f"Duplicate: {name}")
-        for path, hash_ in sorted(items, key=lambda x: str(x[0])):
-            path = Path(path)
+        for path, _ in sorted(items, key=lambda x: str(x[0])):
             print(f"  {path.name} in {path.parent.parent.name}/{path.parent.name}")
-            print(f"  {path.name}")
+            print(f"  {path}")
 
 
 if __name__ == "__main__":

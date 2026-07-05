@@ -1,13 +1,12 @@
-import os
 import shutil
 import hashlib
 from pathlib import Path
 
 
-def calculate_hash(filepath, chunk_size=8192):
+def calculate_hash(filepath: Path, chunk_size=8192):
     sha256 = hashlib.sha256()
     try:
-        with open(filepath, "rb") as f:
+        with filepath.open("rb") as f:
             for chunk in iter(lambda: f.read(chunk_size), b""):
                 sha256.update(chunk)
         return sha256.hexdigest()
@@ -35,7 +34,7 @@ def get_system_bin_hashes():
 
 
 def check_and_move_files(system_hashes):
-    current_dir = Path(".")
+    current_dir = Path.cwd()
     matches_dir = current_dir / "matched_system_files"
     matches_dir.mkdir(exist_ok=True)
     matches = []
@@ -44,7 +43,7 @@ def check_and_move_files(system_hashes):
     for filepath in current_dir.iterdir():
         try:
             if filepath.is_file() and (not filepath.name.startswith(".")):
-                if filepath.absolute() == matches_dir.absolute():
+                if filepath.resolve() == matches_dir.resolve():
                     continue
                 hash_value = calculate_hash(filepath)
                 if hash_value and hash_value in system_hashes:
@@ -57,7 +56,7 @@ def check_and_move_files(system_hashes):
                         while dest_path.exists():
                             dest_path = original_dest.parent / f"{original_dest.stem}_{counter}{original_dest.suffix}"
                             counter += 1
-                        shutil.move(str(filepath), str(dest_path))
+                        shutil.move(filepath, dest_path)
                         moved.append((filepath.name, dest_path.name))
                         print(f"  📦 Moved: {filepath.name} -> {dest_path.name}")
                     else:

@@ -1,8 +1,8 @@
 import argparse
 import multiprocessing
-import os
 import re
 from functools import partial
+from pathlib import Path
 import cv2
 import numpy as np
 import pytesseract
@@ -82,11 +82,11 @@ def format_time(seconds: float) -> str:
     return f"{h:02d}:{m:02d}:{int(s):02d},{ms:03d}"
 
 
-def parse_srt(filepath: str) -> list[dict]:
-    if not os.path.isfile(filepath):
+def parse_srt(filepath_path: Path) -> list[dict]:
+    if not filepath_path.is_file():
         return []
     subs = []
-    with open(filepath, encoding="utf-8") as f:
+    with filepath_path.open(encoding="utf-8") as f:
         lines = [line.rstrip() for line in f]
     i = 0
     while i < len(lines):
@@ -146,8 +146,9 @@ def extract_burned_subs_ocr(
 ) -> None:
     if workers is None:
         workers = max(1, multiprocessing.cpu_count() - 1)
-    if resume and os.path.isfile(output_srt_path):
-        existing_subs = parse_srt(output_srt_path)
+    output_srt_file = Path(output_srt_path)
+    if resume and output_srt_file.is_file():
+        existing_subs = parse_srt(output_srt_file)
         if existing_subs:
             if start_time is None:
                 start_time = max(sub["end"] for sub in existing_subs)
@@ -168,8 +169,8 @@ def extract_burned_subs_ocr(
     with multiprocessing.Pool(processes=workers) as pool:
         results: list[tuple[float, str]] = pool.map(worker_fn, frames)
     new_subs = [{"start": t, "end": t + 1.0 / sample_fps, "text": txt} for t, txt in results if txt]
-    if resume and os.path.isfile(output_srt_path):
-        existing_subs = parse_srt(output_srt_path)
+    if resume and output_srt_file.is_file():
+        existing_subs = parse_srt(output_srt_file)
         if existing_subs:
             if start_time is not None:
                 kept = [s for s in existing_subs if s["end"] <= start_time]
@@ -183,7 +184,7 @@ def extract_burned_subs_ocr(
     all_subs.sort(key=lambda s: s["start"])
     subtitles = _merge_subtitles(all_subs)
     print(f"[3/3] Writing {len(subtitles)} subtitle(s) → {output_srt_path}")
-    with open(output_srt_path, "w", encoding="utf-8") as f:
+    with output_srt_file.open("w", encoding="utf-8") as f:
         for i, sub in enumerate(subtitles, 1):
             f.write(f"{i}\n")
             f.write(f"{format_time(sub['start'])} --> {format_time(sub['end'])}\n")
