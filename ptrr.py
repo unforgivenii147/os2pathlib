@@ -1,5 +1,4 @@
 import multiprocessing as mp
-import os
 import shutil
 import sys
 import tarfile
@@ -64,7 +63,7 @@ def create_archive_optimized():
                     compressed_chunk = compressor.compress(chunk)
                     f_out.write(compressed_chunk)
                 f_out.write(compressor.flush())
-            os.unlink(tmp_tar_path)
+            Path(tmp_tar_path).unlink(missing_ok=True)
         if archive_path.exists() and archive_path.stat().st_size > 0:
             test_dir = parent_dir / f"{dir_name}_test"
             try:
@@ -82,8 +81,8 @@ def create_archive_optimized():
             sys.exit(1)
     except Exception as e:
         print(f"Error: {e}")
-        if "tmp_tar_path" in locals() and os.path.exists(tmp_tar_path):
-            os.unlink(tmp_tar_path)
+        if "tmp_tar_path" in locals():
+            Path(tmp_tar_path).unlink(missing_ok=True)
         if archive_path.exists():
             archive_path.unlink()
         sys.exit(1)

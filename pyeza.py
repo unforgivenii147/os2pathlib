@@ -162,58 +162,59 @@ def output_columns(entries: list[Entry], icons=False, colors=True, width=None) -
         print("".join(padded))
 
 
-def print_tree(base: str, prefix: str = "", icons=False, colors=True) -> None:
+def print_tree(base: (str | Path), prefix: str = "", icons=False, colors=True) -> None:
+    base_path = Path(base)
     try:
-        names = sorted(os.listdir(base))
+        entries = sorted(list(base_path.iterdir()), key=lambda e: e.name)
     except PermissionError:
         print(prefix + " [permission denied]")
         return
-    for i, name in enumerate(names):
-        path = os.path.join(base, name)
-        is_last = i == len(names) - 1
+    for i, entry in enumerate(entries):
+        is_last = i == len(entries) - 1
         connector = "└── " if is_last else "├── "
         try:
-            st = os.lstat(path)
+            st = entry.lstat()
         except FileNotFoundError:
             continue
-        txt = name
+        txt = entry.name
         if icons:
-            txt = f"{detect_icon(name, st.st_mode)} {txt}"
+            txt = f"{detect_icon(entry.name, st.st_mode)} {txt}"
         if colors:
             txt = colorize(txt, st.st_mode)
         print(prefix + connector + txt)
         if stat.S_ISDIR(st.st_mode):
             new_prefix = prefix + ("    " if is_last else "│   ")
-            print_tree(path, new_prefix, icons, colors)
+            print_tree(entry, new_prefix, icons, colors)
 
 
-def list_recursive(base: str, args: Namespace, depth=0) -> None:
+def list_recursive(base: (str | Path), args: Namespace, depth=0) -> None:
+    base_path = Path(base)
     if depth > 0:
         print(f"\n{base}:")
     try:
-        names = os.listdir(base)
+        entries_iter = list(base_path.iterdir())
     except PermissionError:
         print("Permission denied:", base)
         return
-    names = sorted(names)
-    gitmap = get_git_status_for_dir(base) if args.git else {}
+    entries_iter = sorted(entries_iter, key=lambda e: e.name)
+    gitmap = get_git_status_for_dir(str(base_path)) if args.git else {}
     entries = []
-    for n in names:
+    for entry in entries_iter:
+        n = entry.name
         if not args.all and n.startswith("."):
             continue
-        path = os.path.join(base, n)
         try:
-            st = os.lstat(path)
+            st = entry.lstat()
         except FileNotFoundError:
             continue
         link_t = None
         if stat.S_ISLNK(st.st_mode):
             try:
-                link_t = Path(path).readlink()
+                link_t = entry.readlink()
             except OSError:
                 link_t = None
         git = gitmap.get(n)
-        entries.append(Entry(path, n, st, link_t, git))
+        entries.append(Entry(str(entry), n, st, link_t, git))
     print_entries(entries, args)
     for e in entries:
         if stat.S_ISDIR(e.stat.st_mode):
@@ -253,50 +254,51 @@ def main() -> None:
     p.add_argument("--git", action="store_true")
     p.add_argument("--no-color", action="store_true")
     args = p.parse_args()
-    for path in args.paths:
+    for path_str in args.paths:
+        path = Path(path_str)
         if len(args.paths) > 1:
-            print(f"{path}:")
+            print(f"{path_str}:")
         if args.tree:
             print_tree(path, icons=args.icons, colors=not args.no_color)
             continue
         if args.recursive:
             list_recursive(path, args)
             continue
-        if Path(path).is_file() or Path(path).is_symlink():
+        if path.is_file() or path.is_symlink():
             try:
-                st = os.lstat(path)
+                st = path.lstat()
             except FileNotFoundError:
                 continue
             git = None
             if args.git:
-                gitmap = get_git_status_for_dir(Path(path).parent)
-                git = gitmap.get(Path(path).name)
-            e = Entry(Path(path).parent, Path(path).name, st, git=git)
+                gitmap = get_git_status_for_dir(str(path.parent))
+                git = gitmap.get(path.name)
+            e = Entry(str(path.parent), path.name, st, git=git)
             print_entries([e], args)
             continue
         try:
-            names = os.listdir(path)
+            entries_iter = list(path.iterdir())
         except PermissionError:
-            print("Permission denied:", path)
+            print("Permission denied:", path_str)
             continue
-        names = sorted(names)
-        gitmap = get_git_status_for_dir(path) if args.git else {}
+        entries_iter = sorted(entries_iter, key=lambda e: e.name)
+        gitmap = get_git_status_for_dir(str(path)) if args.git else {}
         entries = []
-        for n in names:
+        for entry in entries_iter:
+            n = entry.name
             if not args.all and n.startswith("."):
                 continue
-            path = os.path.join(path, n)
             try:
-                st = os.lstat(path)
+                st = entry.lstat()
             except FileNotFoundError:
                 continue
             link_t = None
             if stat.S_ISLNK(st.st_mode):
                 try:
-                    link_t = Path(path).readlink()
+                    link_t = entry.readlink()
                 except OSError:
                     link_t = None
-            entries.append(Entry(path, n, st, link_t, gitmap.get(n)))
+            entries.append(Entry(str(entry), n, st, link_t, gitmap.get(n)))
         print_entries(entries, args)
 
 
